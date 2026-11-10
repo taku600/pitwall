@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PITWALL">
+<meta name="theme-color" content="#0b0b0f">
+<link rel="apple-touch-icon" href="icon.png">
+<title>PITWALL ドライブ計測</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0b0f; --panel:#16161d; --panel2:#1e1e27; --line:#2a2a35;
+  --text:#f4f4f6; --muted:#8b8b99; --red:#e10600; --purple:#b04cf0;
+  --green:#1fd16a; --yellow:#ffd60a;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font-family:"Titillium Web","Hiragino Sans","Hiragino Kaku Gothic ProN",system-ui,sans-serif;
+  -webkit-user-select:none;user-select:none;overscroll-behavior:none}
+body{min-height:100vh;min-height:100dvh;padding-top:var(--safe-t);padding-bottom:calc(var(--safe-b) + 72px)}
+body.live{padding-bottom:var(--safe-b)}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+header.top{display:flex;align-items:center;gap:10px;padding:14px 18px 6px}
+.logo{font-weight:900;font-style:italic;letter-spacing:.04em;font-size:22px}
+.logo b{color:var(--red)}
+.stripe{height:4px;margin:0 18px 6px;background:repeating-linear-gradient(90deg,var(--red) 0 22px,transparent 22px 30px);opacity:.9;border-radius:2px}
+main{padding:8px 16px 24px}
+.screen{display:none}.screen.on{display:block}
+h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:22px 2px 10px;font-weight:700}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}
+.muted{color:var(--muted)}
+button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:10px 14px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-weight:700;font-size:15px}
+.chip.on{background:var(--red);border-color:var(--red)}
+.chip.add{border-style:dashed;color:var(--muted)}
+.row{display:flex;gap:10px;align-items:center}
+input[type=text],input[type=number],textarea{width:100%;font:inherit;font-size:16px;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;-webkit-user-select:text;user-select:text}
+textarea{min-height:120px;font-size:12px;font-family:ui-monospace,Menlo,monospace}
+.btn{padding:12px 16px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);font-weight:700;font-size:15px}
+.btn.red{background:var(--red);border-color:var(--red)}
+.btn.ghost{background:transparent}
+.btn.block{width:100%}
+.stat3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.stat{background:var(--panel2);border-radius:12px;padding:10px 12px}
+.stat .k{font-size:11px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;font-weight:700}
+.stat .v{font-size:20px;font-weight:700;margin-top:2px}
+.go{display:block;width:100%;margin-top:22px;padding:22px;border-radius:20px;background:var(--red);font-size:26px;font-weight:900;font-style:italic;letter-spacing:.08em;box-shadow:0 10px 30px rgba(225,6,0,.35)}
+.go:disabled{opacity:.35;box-shadow:none}
+.go small{display:block;font-size:13px;font-style:normal;font-weight:600;letter-spacing:.05em;opacity:.85}
+/* nav */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:rgba(11,11,15,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);padding-bottom:var(--safe-b);z-index:5}
+nav.tabs button{flex:1;padding:12px 0 10px;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.05em}
+nav.tabs button.on{color:var(--text)}
+nav.tabs button.on::before{content:"";display:block;width:26px;height:3px;background:var(--red);margin:0 auto 6px;border-radius:2px}
+nav.tabs button:not(.on)::before{content:"";display:block;height:3px;margin-bottom:6px}
+body.live nav.tabs{display:none}
+/* lights */
+#lights{position:fixed;inset:0;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:20}
+#lights.on{display:flex}
+.lightbar{display:flex;gap:12px;padding:16px;background:#111;border-radius:14px}
+.lamp{width:44px;height:44px;border-radius:50%;background:#2a0000;box-shadow:inset 0 0 0 3px #000}
+.lamp.lit{background:radial-gradient(circle at 40% 35%,#ff6b5e,#e10600 55%,#7a0000);box-shadow:0 0 22px #e10600}
+#lightsText{margin-top:26px;font-size:30px;font-weight:900;font-style:italic;letter-spacing:.1em;height:40px}
+/* live */
+.livehead{display:flex;justify-content:space-between;align-items:center;padding:6px 2px}
+.routeName{font-weight:700;font-size:16px}
+.gps{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--panel2)}
+.gps.ok{color:var(--green)}.gps.weak{color:var(--yellow)}.gps.bad{color:var(--red)}
+.laptime{font-size:min(19vw,96px);font-weight:900;line-height:1;text-align:center;margin:18px 0 6px;letter-spacing:-.01em}
+.delta{display:block;width:max-content;margin:0 auto;padding:6px 16px;border-radius:999px;font-size:24px;font-weight:900;background:var(--panel2);color:var(--muted)}
+.delta.fast{background:rgba(31,209,106,.15);color:var(--green)}
+.delta.slow{background:rgba(225,6,0,.18);color:#ff4d45}
+.deltaLbl{text-align:center;font-size:12px;color:var(--muted);margin-top:6px;letter-spacing:.08em}
+.pitbox{margin-top:18px;border-radius:18px;padding:16px;border:2px solid var(--line);background:var(--panel);transition:all .25s}
+.pitbox.inpit{border-color:var(--yellow);background:rgba(255,214,10,.08)}
+.pitstate{font-size:28px;font-weight:900;font-style:italic;letter-spacing:.06em}
+.pitbox.inpit .pitstate{color:var(--yellow)}
+.pitnow{font-size:40px;font-weight:900}
+.finish{position:relative;overflow:hidden;display:block;width:100%;margin-top:18px;padding:20px;border-radius:18px;font-size:22px;font-weight:900;letter-spacing:.08em;background:repeating-conic-gradient(#fff 0 25%,#111 0 50%) 0 0/24px 24px;color:#000}
+.finish span{position:relative;z-index:2;background:#fff;padding:4px 14px;border-radius:8px}
+.finish .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(225,6,0,.75);z-index:1}
+.hint{text-align:center;font-size:12px;color:var(--muted);margin-top:8px}
+/* result */
+.flag{height:46px;border-radius:12px;background:repeating-conic-gradient(#fff 0 25%,#111 0 50%) 0 0/23px 23px;margin-bottom:14px}
+.pos{font-size:56px;font-weight:900;font-style:italic;line-height:1}
+.pb{display:inline-block;margin-top:8px;padding:6px 12px;border-radius:8px;background:var(--purple);font-weight:900;letter-spacing:.08em;font-size:14px}
+.bigtime{font-size:52px;font-weight:900;line-height:1.05;margin-top:6px}
+.cmp{display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line)}
+.cmp:first-child{border-top:0}
+.cmp .v{font-weight:700}
+.fast{color:var(--green)}.slow{color:#ff4d45}.purple{color:var(--purple)}
+/* history */
+.runrow{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;padding:12px 2px;border-top:1px solid var(--line)}
+.runrow:first-of-type{border-top:0}
+.runrow .p{font-weight:900;font-style:italic;font-size:20px}
+.runrow .t{font-weight:700;font-size:20px;text-align:right}
+.runrow .d{font-size:12px;color:var(--muted)}
+.del{color:var(--muted);font-size:13px;padding:4px 8px}
+/* modal */
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:30;padding:16px;padding-bottom:calc(16px + var(--safe-b))}
+#modal.on{display:flex}
+#modal .card{width:100%;max-width:480px}
+#modal p{margin:0 0 14px;line-height:1.6}
+.toast{position:fixed;left:50%;top:calc(var(--safe-t) + 14px);transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-weight:700;z-index:40;opacity:0;transition:opacity .25s;pointer-events:none}
+.toast.on{opacity:1}
+.empty{padding:22px 4px;text-align:center;color:var(--muted)}
+label.set{display:block;font-weight:700;margin:4px 0 8px}
+/* ---- 横向き ---- */
+body{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+@media (orientation: landscape) and (max-height: 600px){
+  body.live header.top, body.live .stripe{display:none}
+  body.live main{padding:10px 14px}
+  #s-live.on{display:grid;grid-template-columns:1.15fr 1fr;gap:16px;align-items:start}
+  #s-live .laptime{font-size:min(17vh,18vw,110px);margin:8px 0 6px}
+  #s-live .delta{font-size:22px}
+  #s-live .stat3{margin-top:10px}
+  #s-live .stat .v{font-size:18px}
+  #s-live .pitbox{margin-top:0;padding:12px 14px}
+  #s-live .pitstate{font-size:24px}
+  #s-live .pitnow{font-size:32px}
+  #s-live .finish{margin-top:10px;padding:14px}
+  #s-live .hint{font-size:11px;margin-top:6px}
+  .laptime{text-align:left}
+  .delta{margin:0}
+  .deltaLbl{text-align:left}
+  /* ホーム・結果・記録は中央寄せで横に広がりすぎないように */
+  main{max-width:720px;margin:0 auto}
+  body.live main{max-width:none}
+  nav.tabs{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="logo">PIT<b>WALL</b></div><div class="muted" style="font-size:12px;font-weight:700;letter-spacing:.1em">DRIVE TIMING</div></header>
+<div class="stripe"></div>
+
+<main>
+  <!-- HOME -->
+  <section id="s-home" class="screen on">
+    <h2>コース（目的地）</h2>
+    <div class="chips" id="routeChips"></div>
+    <div id="addRouteBox" style="display:none;margin-top:10px" class="row">
+      <input type="text" id="newRouteName" placeholder="例：自宅 → 大学" maxlength="30">
+      <button class="btn red" id="addRouteOk">追加</button>
+    </div>
+    <div id="routeInfo"></div>
+    <button class="go" id="startBtn" disabled>LIGHTS OUT<small>計測スタート</small></button>
+    <p class="hint">運転中は操作しないでください。スタート・ストップは停車中に。</p>
+  </section>
+
+  <!-- LIVE -->
+  <section id="s-live" class="screen">
+   <div class="lcol">
+    <div class="livehead"><div class="routeName" id="liveRoute"></div><div class="gps" id="gps">GPS --</div></div>
+    <div class="laptime num" id="lapTime">0:00.0</div>
+    <div class="delta num" id="delta">PB --</div>
+    <div class="deltaLbl" id="deltaLbl">ベスト比（同じ距離地点）</div>
+    <div class="stat3">
+      <div class="stat"><div class="k">距離</div><div class="v num" id="liveDist">0.00<span class="muted" style="font-size:12px"> km</span></div></div>
+      <div class="stat"><div class="k">速度</div><div class="v num" id="liveSpeed">0<span class="muted" style="font-size:12px"> km/h</span></div></div>
+      <div class="stat"><div class="k">走行時間</div><div class="v num" id="liveMoving">0:00</div></div>
+    </div>
+   </div>
+   <div class="rcol">
+    <div class="pitbox" id="pitbox">
+      <div class="row" style="justify-content:space-between;align-items:flex-end">
+        <div><div class="pitstate" id="pitState">ON TRACK</div><div class="muted" style="font-size:13px" id="pitSub">走行中</div></div>
+        <div class="pitnow num" id="pitNow"></div>
+      </div>
+      <div class="stat3">
+        <div class="stat"><div class="k">ピット回数</div><div class="v num" id="pitCount">0</div></div>
+        <div class="stat"><div class="k">ピット合計</div><div class="v num" id="pitTotal">0:00</div></div>
+        <div class="stat"><div class="k">最長</div><div class="v num" id="pitLong">0:00</div></div>
+      </div>
+    </div>
+    <button class="finish" id="finishBtn"><div class="fill" id="finishFill"></div><span>FINISH</span></button>
+    <div class="hint">目的地に着いて止まったら長押し（1秒）でゴール<br>ゴール時刻は「最後に止まった瞬間」で記録されます</div>
+    <div class="hint" id="wakeInfo"></div>
+   </div>
+  </section>
+
+  <!-- RESULT -->
+  <section id="s-result" class="screen"></section>
+
+  <!-- HISTORY -->
+  <section id="s-hist" class="screen">
+    <h2>コースを選択</h2>
+    <div class="chips" id="histChips"></div>
+    <div id="histBody"></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="s-set" class="screen">
+    <h2>ピット判定</h2>
+    <div class="card">
+      <label class="set" for="minPit">何秒止まったらピットとするか</label>
+      <div class="row"><input type="number" id="minPit" min="1" max="120" inputmode="numeric" style="max-width:120px"><span class="muted">秒（初期値 3秒・信号待ちも含む）</span></div>
+    </div>
+    <h2>お試し</h2>
+    <div class="card">
+      <p class="muted" style="margin:0 0 12px;line-height:1.6">家の中でも動きを確認できるデモ走行です（10倍速・保存されません）。</p>
+      <button class="btn block" id="demoBtn">デモ走行を始める</button>
+    </div>
+    <h2>バックアップ</h2>
+    <div class="card">
+      <p class="muted" style="margin:0 0 12px;line-height:1.6">記録はこの iPhone の Safari 内に保存されています。機種変更やデータ消去に備えて、ときどき書き出しておくと安心です。</p>
+      <div class="row"><button class="btn" id="exportBtn" style="flex:1">書き出し（コピー）</button><button class="btn" id="importBtn" style="flex:1">読み込み</button></div>
+      <textarea id="backupText" style="margin-top:10px;display:none" placeholder="ここにバックアップの文字列を貼り付け"></textarea>
+      <button class="btn red block" id="importOk" style="margin-top:10px;display:none">この内容で読み込む</button>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="home" class="on">ホーム</button>
+  <button data-tab="hist">記録</button>
+  <button data-tab="set">設定</button>
+</nav>
+
+<div id="lights"><div class="lightbar"><div class="lamp"></div><div class="lamp"></div><div class="lamp"></div><div class="lamp"></div><div class="lamp"></div></div><div id="lightsText"></div></div>
+<div id="modal"><div class="card"><p id="modalText"></p><div class="row"><button class="btn ghost" id="modalNo" style="flex:1">キャンセル</button><button class="btn red" id="modalYes" style="flex:1">OK</button></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== CORE START (UIに依存しない計測ロジック) ===== */
+const Core = (() => {
+  const R = 6371008.8;
+  function haversine(a, b) {
+    const toR = Math.PI / 180;
+    const dLat = (b.lat - a.lat) * toR, dLng = (b.lng - a.lng) * toR;
+    const s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * toR) * Math.cos(b.lat * toR) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+  }
+  const STOP_SPEED = 0.8;   // m/s 未満で「止まっている」 (約3km/h)
+  const MOVE_SPEED = 1.6;   // m/s 超で「動き出した」 (約6km/h)
+  const MAX_ACC = 65;       // m これより精度が悪い点は使わない
+  const SAMPLE_EVERY = 5000;
+
+  function createTracker(startT, opts = {}) {
+    const minPitMs = (opts.minPitSec ?? 3) * 1000;
+    const s = {
+      startT, distance: 0, anchor: null, last: null, speed: 0, moved: false,
+      stopped: false, stopCand: null, pitStart: null, pits: [], samples: [[0, 0]], lastSampleT: startT,
+    };
+    function feed(p) { // p: {lat,lng,acc,speed(m/s|null),t(ms)}
+      if (p.acc != null && p.acc > MAX_ACC) return s;
+      let spd;
+      if (s.anchor) {
+        const d = haversine(s.anchor, p);
+        const dt = (p.t - s.last.t) / 1000;
+        const dtA = (p.t - s.anchor.t) / 1000;
+        if (p.speed != null && p.speed >= 0) spd = p.speed;
+        else {
+          const dl = haversine(s.last, p);
+          spd = dt > 0 ? dl / dt : 0;
+          if (!(spd >= 0) || !isFinite(spd)) spd = dtA > 0 ? d / dtA : 0;
+        }
+        // 停車中のGPSのブレで距離が増えないよう、動いている時だけ加算
+        if (spd >= STOP_SPEED || d > 30) { s.distance += d; s.anchor = p; }
+      } else { spd = (p.speed != null && p.speed >= 0) ? p.speed : 0; s.anchor = p; }
+      s.last = p; s.speed = spd;
+
+      if (!s.moved) { // スタート直後、動き出すまではピットにしない
+        if (spd > MOVE_SPEED) s.moved = true;
+      } else if (spd < STOP_SPEED) {
+        if (s.stopCand == null) s.stopCand = p.t;
+        if (!s.stopped && p.t - s.stopCand >= minPitMs) { s.stopped = true; s.pitStart = s.stopCand; }
+      } else if (spd > MOVE_SPEED) {
+        s.stopCand = null;
+        if (s.stopped) { s.pits.push([s.pitStart, p.t]); s.stopped = false; s.pitStart = null; }
+      }
+      if (p.t - s.lastSampleT >= SAMPLE_EVERY) {
+        s.samples.push([Math.round((p.t - startT) / 100) / 10, Math.round(s.distance)]);
+        s.lastSampleT = p.t;
+      }
+      return s;
+    }
+    // 止まっているとGPSの更新が来なくなる端末があるので、
+    // 低速のまま更新が途切れたら停車とみなす（高速で途切れた＝トンネル等は除外）
+    function tick(now) {
+      if (!s.moved || !s.last || s.stopped) return;
+      if (now - s.last.t >= 4000 && s.speed < 3) {
+        if (s.stopCand == null) s.stopCand = s.last.t;
+        s.speed = 0;
+        if (now - s.stopCand >= minPitMs) { s.stopped = true; s.pitStart = s.stopCand; }
+      }
+    }
+    // 現在時刻での集計
+    function summary(now) {
+      const closed = s.pits.reduce((a, [x, y]) => a + (y - x), 0);
+      const cur = s.stopped ? now - s.pitStart : 0;
+      const longest = Math.max(0, cur, ...s.pits.map(([x, y]) => y - x));
+      const total = now - startT;
+      return { total, pitCount: s.pits.length + (s.stopped ? 1 : 0), pitTime: closed + cur, curPit: cur,
+               longest, moving: Math.max(0, total - closed - cur), distance: s.distance };
+    }
+    // ゴール：目的地に着いて止まってからボタンを押すので、
+    // 最後に止まった時点をゴール時刻にする（その停車はピットに数えない）
+    function finish(endT) {
+      let end = endT;
+      if (s.stopped) end = s.pitStart; else if (s.stopCand != null) end = s.stopCand;
+      s.stopped = false; s.pitStart = null; s.stopCand = null;
+      const tEnd = Math.round((end - startT) / 100) / 10;
+      s.samples = s.samples.filter(x => x[0] <= tEnd);
+      s.samples.push([tEnd, Math.round(s.distance)]);
+      s.endT = end;
+      return summary(end);
+    }
+    return { state: s, feed, tick, summary, finish };
+  }
+  // ベスト記録で、距離dの地点を通過した時刻(秒)
+  function timeAtDist(samples, d) {
+    if (!samples || samples.length < 2) return null;
+    const lastD = samples[samples.length - 1][1];
+    if (d > lastD) return null;
+    for (let i = 1; i < samples.length; i++) {
+      const [t1, d1] = samples[i];
+      if (d1 >= d) {
+        const [t0, d0] = samples[i - 1];
+        if (d1 === d0) return t0;
+        return t0 + (t1 - t0) * (d - d0) / (d1 - d0);
+      }
+    }
+    return null;
+  }
+  function fmt(ms, tenths) {
+    if (ms == null || !isFinite(ms)) return "--";
+    const neg = ms < 0; ms = Math.abs(ms);
+    const t = Math.floor(ms / 100);
+    const h = Math.floor(t / 36000), m = Math.floor(t / 600) % 60, sec = Math.floor(t / 10) % 60, d = t % 10;
+    let out = h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}` : `${m}:${String(sec).padStart(2, "0")}`;
+    if (tenths) out += "." + d;
+    return (neg ? "-" : "") + out;
+  }
+  function fmtDelta(ms) {
+    if (ms == null) return "--";
+    const sign = ms < 0 ? "-" : "+";
+    const a = Math.abs(ms);
+    if (a < 60000) return sign + (a / 1000).toFixed(1);
+    return sign + fmt(a, false);
+  }
+  return { haversine, createTracker, timeAtDist, fmt, fmtDelta, STOP_SPEED, MOVE_SPEED };
+})();
+if (typeof module !== "undefined") module.exports = Core;
+/* ===== CORE END ===== */
+</script>
+
+<script>
+(() => {
+if (typeof document === "undefined") return;
+const $ = id => document.getElementById(id);
+const KEY = "pitwall.v1", AKEY = "pitwall.active";
+
+// ---------- 保存 ----------
+function load() {
+  try { const d = JSON.parse(localStorage.getItem(KEY)); if (d && d.routes) return d; } catch (e) {}
+  return { routes: [], runs: [], settings: { minPitSec: 3 }, sel: null };
+}
+let db = load();
+function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { toast("保存に失敗しました"); } }
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+// ---------- UI 共通 ----------
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("on"), 2200); }
+function ask(text, yesLabel = "OK") {
+  return new Promise(res => {
+    $("modalText").textContent = text; $("modalYes").textContent = yesLabel; $("modal").classList.add("on");
+    const done = v => { $("modal").classList.remove("on"); $("modalYes").onclick = $("modalNo").onclick = null; res(v); };
+    $("modalYes").onclick = () => done(true); $("modalNo").onclick = () => done(false);
+  });
+}
+function show(name) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.toggle("on", s.id === "s-" + name));
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+  document.body.classList.toggle("live", name === "live" || name === "result");
+  window.scrollTo(0, 0);
+  if (name === "home") renderHome();
+  if (name === "hist") renderHist();
+  if (name === "set") $("minPit").value = db.settings.minPitSec;
+}
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => show(b.dataset.tab));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const runsOf = rid => db.runs.filter(r => r.routeId === rid).sort((a, b) => a.total - b.total);
+const fmtDate = ts => { const d = new Date(ts); return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`; };
+const km = m => (m / 1000).toFixed(2);
+
+// ---------- ホーム ----------
+function renderHome() {
+  const box = $("routeChips");
+  box.innerHTML = db.routes.map(r => `<button class="chip ${db.sel === r.id ? "on" : ""}" data-id="${r.id}">${esc(r.name)}</button>`).join("") +
+    `<button class="chip add" id="addChip">＋ コース追加</button>`;
+  box.querySelectorAll(".chip[data-id]").forEach(c => c.onclick = () => { db.sel = c.dataset.id; save(); renderHome(); });
+  $("addChip").onclick = () => { $("addRouteBox").style.display = "flex"; $("newRouteName").focus(); };
+  const sel = db.routes.find(r => r.id === db.sel);
+  $("startBtn").disabled = !sel;
+  if (!sel) {
+    $("routeInfo").innerHTML = `<div class="card" style="margin-top:14px"><div class="muted" style="line-height:1.7">${db.routes.length ? "走るコースを選んでください。" : "まず「＋ コース追加」から、よく走る区間を登録してください。<br>例：自宅 → 大学、大学 → ジム"}</div></div>`;
+    return;
+  }
+  const rs = runsOf(sel.id);
+  const best = rs[0], last = [...rs].sort((a, b) => b.start - a.start)[0];
+  $("routeInfo").innerHTML = `<h2>${esc(sel.name)}</h2><div class="card">
+    <div class="stat3" style="margin-top:0">
+      <div class="stat"><div class="k">ベスト</div><div class="v num purple">${best ? Core.fmt(best.total, true) : "--"}</div></div>
+      <div class="stat"><div class="k">前回</div><div class="v num">${last ? Core.fmt(last.total, true) : "--"}</div></div>
+      <div class="stat"><div class="k">走行回数</div><div class="v num">${rs.length}</div></div>
+    </div></div>`;
+}
+$("addRouteOk").onclick = () => {
+  const n = $("newRouteName").value.trim();
+  if (!n) return;
+  const r = { id: uid(), name: n }; db.routes.push(r); db.sel = r.id; save();
+  $("newRouteName").value = ""; $("addRouteBox").style.display = "none"; renderHome();
+};
+$("newRouteName").addEventListener("keydown", e => { if (e.key === "Enter") $("addRouteOk").click(); });
+
+// ---------- 画面スリープ防止 ----------
+let wakeLock = null;
+async function lockOn() {
+  try { if ("wakeLock" in navigator) { wakeLock = await navigator.wakeLock.request("screen"); $("wakeInfo").textContent = "画面スリープ防止：ON"; return; } } catch (e) {}
+  $("wakeInfo").textContent = "画面が自動で消えないよう、設定 → 画面表示と明るさ → 自動ロック を「なし」にしてください";
+}
+function lockOff() { try { wakeLock && wakeLock.release(); } catch (e) {} wakeLock = null; }
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && run) lockOn(); });
+
+// ---------- 計測 ----------
+let run = null; // {routeId, routeName, tracker, best, watchId, demo, clock}
+let tickId = null;
+const realClock = () => Date.now();
+
+function startLights() {
+  return new Promise(res => {
+    const L = $("lights"), lamps = L.querySelectorAll(".lamp"); L.classList.add("on");
+    lamps.forEach(l => l.classList.remove("lit")); $("lightsText").textContent = "";
+    let i = 0;
+    const iv = setInterval(() => {
+      if (i < 5) { lamps[i].classList.add("lit"); i++; return; }
+      clearInterval(iv);
+      setTimeout(() => {
+        lamps.forEach(l => l.classList.remove("lit")); $("lightsText").textContent = "LIGHTS OUT!";
+        res(); setTimeout(() => L.classList.remove("on"), 700);
+      }, 400 + Math.random() * 500);
+    }, 450);
+  });
+}
+
+async function beginRun({ demo = false, resume = null } = {}) {
+  const route = resume ? { id: resume.routeId, name: resume.routeName } : (demo ? { id: "__demo", name: "デモ走行" } : db.routes.find(r => r.id === db.sel));
+  if (!route) return;
+  if (!demo && !("geolocation" in navigator)) { toast("この端末では位置情報が使えません"); return; }
+  // 先に位置情報の許可を取る（ライト中に許可ダイアログが出ないように）
+  if (!demo && !resume) {
+    const ok = await new Promise(r => navigator.geolocation.getCurrentPosition(() => r(true), err => r(err.code !== 1), { enableHighAccuracy: true, timeout: 8000 }));
+    if (!ok) { await ask("位置情報が許可されていません。設定 → プライバシーとセキュリティ → 位置情報サービス → Safari の Web サイト を「使用中のみ」にしてください。", "閉じる"); return; }
+  }
+  if (!resume) await startLights();
+  let clock = realClock;
+  if (demo) { const base = Date.now(); clock = () => base + (Date.now() - base) * 10; }
+  const startT = resume ? resume.startT : clock();
+  const tracker = Core.createTracker(startT, { minPitSec: db.settings.minPitSec });
+  if (resume) Object.assign(tracker.state, resume.state, { anchor: null, last: null, stopCand: null });
+  const best = demo ? null : runsOf(route.id)[0] || null;
+  run = { routeId: route.id, routeName: route.name, tracker, best, demo, clock, lastFix: 0, acc: null };
+  $("liveRoute").textContent = route.name + (demo ? "（10倍速）" : "");
+  show("live"); lockOn();
+  if (demo) startDemo(); else {
+    run.watchId = navigator.geolocation.watchPosition(onPos, onPosErr, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+  }
+  tickId = setInterval(renderLive, 100); renderLive();
+}
+function onPos(pos) {
+  if (!run) return;
+  const c = pos.coords;
+  run.lastFix = Date.now(); run.acc = c.accuracy;
+  run.tracker.feed({ lat: c.latitude, lng: c.longitude, acc: c.accuracy, speed: c.speed, t: run.demo ? run.clock() : pos.timestamp || Date.now() });
+  persistActive();
+}
+function onPosErr(e) { if (e.code === 1) toast("位置情報が許可されていません"); }
+let lastPersist = 0;
+function persistActive() {
+  if (!run || run.demo || Date.now() - lastPersist < 3000) return; lastPersist = Date.now();
+  const s = run.tracker.state;
+  try { localStorage.setItem(AKEY, JSON.stringify({ routeId: run.routeId, routeName: run.routeName, startT: s.startT,
+    state: { moved: s.moved, distance: s.distance, stopped: s.stopped, pitStart: s.pitStart, pits: s.pits, samples: s.samples, lastSampleT: s.lastSampleT } })); } catch (e) {}
+}
+
+function renderLive() {
+  if (!run) return;
+  const now = run.clock(); run.tracker.tick(now);
+  const sm = run.tracker.summary(now), s = run.tracker.state;
+  $("lapTime").textContent = Core.fmt(sm.total, true);
+  $("liveDist").innerHTML = km(sm.distance) + '<span class="muted" style="font-size:12px"> km</span>';
+  $("liveSpeed").innerHTML = Math.round((s.stopped ? 0 : s.speed) * 3.6) + '<span class="muted" style="font-size:12px"> km/h</span>';
+  $("liveMoving").textContent = Core.fmt(sm.moving, false);
+  // デルタ
+  const dEl = $("delta");
+  if (!run.best) { dEl.className = "delta num"; dEl.textContent = run.demo ? "DEMO" : "初走行"; $("deltaLbl").textContent = run.demo ? "デモ走行" : "このコースの初記録になります"; }
+  else {
+    const bt = sm.distance > 150 ? Core.timeAtDist(run.best.samples, sm.distance) : null;
+    if (bt == null) { dEl.className = "delta num"; dEl.textContent = sm.distance > 150 ? "PB超過" : "PB --"; }
+    else { const dm = sm.total - bt * 1000; dEl.className = "delta num " + (dm <= 0 ? "fast" : "slow"); dEl.textContent = Core.fmtDelta(dm); }
+    $("deltaLbl").textContent = "ベスト " + Core.fmt(run.best.total, true) + " と比較（同じ距離地点）";
+  }
+  // ピット
+  $("pitbox").classList.toggle("inpit", s.stopped);
+  $("pitState").textContent = s.stopped ? "IN PIT" : "ON TRACK";
+  $("pitSub").textContent = s.stopped ? `PIT ${sm.pitCount} 回目 停車中` : "走行中";
+  $("pitNow").textContent = s.stopped ? Core.fmt(sm.curPit, true) : "";
+  $("pitCount").textContent = sm.pitCount;
+  $("pitTotal").textContent = Core.fmt(sm.pitTime, false);
+  $("pitLong").textContent = Core.fmt(sm.longest, false);
+  // GPS
+  const g = $("gps");
+  if (run.demo) { g.className = "gps ok"; g.textContent = "DEMO"; }
+  else if (!run.lastFix || Date.now() - run.lastFix > 10000) { g.className = "gps bad"; g.textContent = "GPS 受信待ち"; }
+  else if (run.acc > 30) { g.className = "gps weak"; g.textContent = "GPS 弱い"; }
+  else { g.className = "gps ok"; g.textContent = "GPS 良好"; }
+}
+
+// 長押しでゴール
+(() => {
+  const b = $("finishBtn"), f = $("finishFill"); let t0 = 0, raf = 0;
+  const step = () => { const p = Math.min(1, (Date.now() - t0) / 1000); f.style.width = p * 100 + "%"; if (p >= 1) { cancel(); finishRun(); } else raf = requestAnimationFrame(step); };
+  const startP = e => { e.preventDefault(); if (!run) return; t0 = Date.now(); raf = requestAnimationFrame(step); };
+  const cancel = () => { cancelAnimationFrame(raf); f.style.width = "0"; };
+  b.addEventListener("touchstart", startP, { passive: false }); b.addEventListener("mousedown", startP);
+  ["touchend", "touchcancel", "mouseup", "mouseleave"].forEach(ev => b.addEventListener(ev, cancel));
+})();
+
+function stopTracking() {
+  if (!run) return;
+  if (run.watchId != null) navigator.geolocation.clearWatch(run.watchId);
+  clearInterval(run.demoId); clearInterval(tickId); lockOff();
+  try { localStorage.removeItem(AKEY); } catch (e) {}
+}
+function finishRun() {
+  if (!run) return;
+  const endT = run.clock(); const sm = run.tracker.finish(endT); stopTracking();
+  const rec = { id: uid(), routeId: run.routeId, start: run.tracker.state.startT, total: sm.total, pitCount: sm.pitCount,
+    pitTime: sm.pitTime, longest: sm.longest, distance: Math.round(sm.distance), samples: run.tracker.state.samples };
+  const prev = run.demo ? [] : runsOf(run.routeId);
+  const prevBest = prev[0] || null;
+  const prevLast = [...prev].sort((a, b) => b.start - a.start)[0] || null;
+  if (!run.demo) { db.runs.push(rec); save(); }
+  const all = run.demo ? [rec] : runsOf(run.routeId);
+  renderResult(rec, { pos: all.findIndex(r => r.id === rec.id) + 1, n: all.length, prevBest, prevLast, demo: run.demo, routeName: run.routeName });
+  run = null; show("result");
+}
+function renderResult(rec, o) {
+  const isPB = !o.demo && (!o.prevBest || rec.total < o.prevBest.total);
+  const dCls = ms => ms <= 0 ? "fast" : "slow";
+  const avg = rec.distance > 0 && rec.total > 0 ? (rec.distance / 1000) / (rec.total / 3600000) : 0;
+  $("s-result").innerHTML = `
+    <div class="flag"></div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div><div class="muted" style="font-weight:700">${esc(o.routeName)}</div><div class="bigtime num">${Core.fmt(rec.total, true)}</div>
+        ${isPB ? '<div class="pb">PERSONAL BEST</div>' : ""}${o.demo ? '<div class="pb" style="background:var(--panel2)">DEMO（保存なし）</div>' : ""}</div>
+        ${o.demo ? "" : `<div style="text-align:right"><div class="pos ${o.pos === 1 ? "purple" : ""}">P${o.pos}</div><div class="muted" style="font-size:12px">/ ${o.n} 回中</div></div>`}
+      </div>
+    </div>
+    <h2>比較</h2>
+    <div class="card">
+      <div class="cmp"><span>前回ベスト比</span><span class="v num ${o.prevBest ? dCls(rec.total - o.prevBest.total) : ""}">${o.prevBest ? Core.fmtDelta(rec.total - o.prevBest.total) : "初記録"}</span></div>
+      <div class="cmp"><span>前回比</span><span class="v num ${o.prevLast ? dCls(rec.total - o.prevLast.total) : ""}">${o.prevLast ? Core.fmtDelta(rec.total - o.prevLast.total) : "--"}</span></div>
+    </div>
+    <h2>ピットストップ</h2>
+    <div class="card"><div class="stat3" style="margin-top:0">
+      <div class="stat"><div class="k">回数</div><div class="v num">${rec.pitCount}</div></div>
+      <div class="stat"><div class="k">合計</div><div class="v num">${Core.fmt(rec.pitTime, false)}</div></div>
+      <div class="stat"><div class="k">最長</div><div class="v num">${Core.fmt(rec.longest, false)}</div></div>
+    </div></div>
+    <h2>走行</h2>
+    <div class="card"><div class="stat3" style="margin-top:0">
+      <div class="stat"><div class="k">走行時間</div><div class="v num">${Core.fmt(rec.total - rec.pitTime, false)}</div></div>
+      <div class="stat"><div class="k">距離</div><div class="v num">${km(rec.distance)}<span class="muted" style="font-size:12px"> km</span></div></div>
+      <div class="stat"><div class="k">平均</div><div class="v num">${Math.round(avg)}<span class="muted" style="font-size:12px"> km/h</span></div></div>
+    </div></div>
+    <button class="btn red block" style="margin-top:22px;padding:16px" id="resDone">ホームへ</button>
+    ${o.demo ? "" : '<button class="btn ghost block" style="margin-top:8px;color:var(--muted)" id="resDel">この記録を削除</button>'}`;
+  $("resDone").onclick = () => show("home");
+  if (!o.demo) $("resDel").onclick = async () => { if (await ask("この記録を削除しますか？", "削除")) { db.runs = db.runs.filter(r => r.id !== rec.id); save(); show("home"); } };
+}
+
+$("startBtn").onclick = () => beginRun();
+
+// ---------- デモ（10倍速の仮想走行） ----------
+function startDemo() {
+  // 速度[km/h]と秒数の区間: 走る→信号→走る→長めの停車…
+  const plan = [[0, 4], [30, 25], [45, 60], [0, 40], [35, 30], [55, 90], [20, 10], [0, 70], [40, 60], [0, 15], [30, 30], [0, 20]];
+  let lat = 33.8835, lng = 130.8752; // 北九州あたり
+  let seg = 0, segT = 0, prevT = run.clock();
+  run.demoId = setInterval(() => {
+    if (!run) return;
+    const now = run.clock(), dt = (now - prevT) / 1000; prevT = now; segT += dt;
+    while (seg < plan.length && segT > plan[seg][1]) { segT -= plan[seg][1]; seg++; }
+    const v = seg < plan.length ? plan[seg][0] / 3.6 : 0;
+    lat += (v * dt) / 111320;
+    const jitter = () => (Math.random() - .5) * 0.00002;
+    run.lastFix = Date.now(); run.acc = 8;
+    run.tracker.feed({ lat: lat + jitter(), lng: lng + jitter(), acc: 8, speed: v + (v ? (Math.random() - .5) : Math.random() * 0.3), t: now });
+    if (seg >= plan.length) { finishRun(); }
+  }, 100);
+}
+$("demoBtn").onclick = () => beginRun({ demo: true });
+
+// ---------- 記録 ----------
+let histSel = null;
+function renderHist() {
+  if (!histSel || !db.routes.find(r => r.id === histSel)) histSel = db.sel || (db.routes[0] && db.routes[0].id);
+  $("histChips").innerHTML = db.routes.map(r => `<button class="chip ${histSel === r.id ? "on" : ""}" data-id="${r.id}">${esc(r.name)}</button>`).join("") || '<div class="muted">まだコースがありません</div>';
+  $("histChips").querySelectorAll(".chip").forEach(c => c.onclick = () => { histSel = c.dataset.id; renderHist(); });
+  const route = db.routes.find(r => r.id === histSel);
+  if (!route) { $("histBody").innerHTML = ""; return; }
+  const rs = runsOf(route.id);
+  const best = rs[0];
+  $("histBody").innerHTML = `<h2>${esc(route.name)} のランキング</h2><div class="card">` +
+    (rs.length ? rs.map((r, i) => `<div class="runrow">
+      <div class="p ${i === 0 ? "purple" : ""}">P${i + 1}</div>
+      <div><div style="font-weight:700">${fmtDate(r.start)}</div><div class="d">PIT ${r.pitCount}回 ${Core.fmt(r.pitTime, false)} ・ ${km(r.distance)} km</div></div>
+      <div><div class="t num ${i === 0 ? "purple" : ""}">${Core.fmt(r.total, true)}</div><div class="d num" style="text-align:right">${i === 0 ? "BEST" : Core.fmtDelta(r.total - best.total)}</div></div>
+    </div>`).join("") : '<div class="empty">まだ記録がありません</div>') + `</div>
+    <div class="row" style="margin-top:14px"><button class="btn" style="flex:1" id="renameRoute">名前を変更</button><button class="btn" style="flex:1;color:#ff4d45" id="deleteRoute">コースを削除</button></div>
+    <div id="renameBox" class="row" style="display:none;margin-top:10px"><input type="text" id="renameInput" maxlength="30"><button class="btn red" id="renameOk">保存</button></div>`;
+  $("renameRoute").onclick = () => { $("renameBox").style.display = "flex"; $("renameInput").value = route.name; };
+  $("renameOk").onclick = () => { const n = $("renameInput").value.trim(); if (n) { route.name = n; save(); renderHist(); } };
+  $("deleteRoute").onclick = async () => {
+    if (await ask(`「${route.name}」と、その記録 ${rs.length} 件をすべて削除しますか？`, "削除")) {
+      db.routes = db.routes.filter(r => r.id !== route.id); db.runs = db.runs.filter(r => r.routeId !== route.id);
+      if (db.sel === route.id) db.sel = null; histSel = null; save(); renderHist();
+    }
+  };
+}
+
+// ---------- 設定 ----------
+$("minPit").onchange = () => { const v = Math.max(1, Math.min(120, parseInt($("minPit").value) || 3)); db.settings.minPitSec = v; $("minPit").value = v; save(); toast(`${v}秒以上の停車をピットにします`); };
+$("exportBtn").onclick = async () => {
+  const txt = JSON.stringify({ routes: db.routes, runs: db.runs, settings: db.settings });
+  const ta = $("backupText"); ta.style.display = "block"; ta.value = txt; $("importOk").style.display = "none";
+  try { await navigator.clipboard.writeText(txt); toast("コピーしました。メモアプリなどに貼って保管してください"); }
+  catch (e) { ta.select(); toast("下の文字列をすべて選択してコピーしてください"); }
+};
+$("importBtn").onclick = () => { const ta = $("backupText"); ta.style.display = "block"; ta.value = ""; ta.focus(); $("importOk").style.display = "block"; };
+$("importOk").onclick = async () => {
+  try {
+    const d = JSON.parse($("backupText").value);
+    if (!Array.isArray(d.routes) || !Array.isArray(d.runs)) throw 0;
+    if (!(await ask(`コース ${d.routes.length} 件・記録 ${d.runs.length} 件で、今のデータを置き換えます。よろしいですか？`, "読み込む"))) return;
+    db = { routes: d.routes, runs: d.runs, settings: d.settings || { minPitSec: 3 }, sel: null }; save();
+    toast("読み込みました"); $("backupText").style.display = "none"; $("importOk").style.display = "none";
+  } catch (e) { toast("読み込めませんでした。文字列を確認してください"); }
+};
+
+// ---------- 起動 ----------
+show("home");
+(async () => {
+  let a = null; try { a = JSON.parse(localStorage.getItem(AKEY)); } catch (e) {}
+  if (a && a.startT) {
+    if (await ask(`「${a.routeName}」の計測が途中で止まっています（${Core.fmt(Date.now() - a.startT, false)} 経過）。続きから再開しますか？`, "再開")) beginRun({ resume: a });
+    else { try { localStorage.removeItem(AKEY); } catch (e) {} }
+  }
+})();
+})();
+</script>
+</body>
+</html>
